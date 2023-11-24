@@ -1,8 +1,5 @@
 # Candy-Analysis
 
-#Data Beschreibung
-
-
 [Source](https://github.com/fivethirtyeight/data/blob/master/candy-power-ranking/candy-data.csv)
 Header	Description
   -chocolate:	Does it contain chocolate?
