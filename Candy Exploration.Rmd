@@ -1,0 +1,751 @@
+---
+title: 'Data Exploration: Candy Study Dataset'
+output:
+  html_document:
+    df_print: paged
+---
+
+
+#Load libraries 
+```{r}
+# Libraries need to be installed before they can be used (but only once)
+
+#install.packages("magrittr")
+#install.packages("plyr")
+#install.packages("dplyr")
+#install.packages("ggplot2")
+#install.packages("grid")
+#install.packages("gridExtra")
+#install.packages("stringr")
+#install.packages("reshape2")
+
+
+#STRG+SHIFT+RETURN
+# load already installed libraries 
+library(magrittr)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(stringr)
+library(here)
+library(scales)
+library(readr)
+library(tidyverse)
+library(tibble)
+library(reshape2)
+
+```
+
+
+#Data Beschreibung
+
+
+[Source](https://github.com/fivethirtyeight/data/blob/master/candy-power-ranking/candy-data.csv)
+Header	Description
+  -chocolate:	Does it contain chocolate?
+  -fruity	:   Is it fruit flavored?
+  -caramel: 	Is there caramel in the candy?
+  -peanutalmondy:	Does it contain peanuts, peanut butter or almonds?
+  -nougat:	Does it contain nougat?
+  -crispedricewafer:	Does it contain crisped rice, wafers, or a cookie component?
+  -hard:	Is it a hard candy?
+  -bar:	Is it a candy bar?
+  -pluribus:	Is it one of many candies in a bag or box?
+  -sugarpercent:	The percentile of sugar it falls under within the data set.
+  -pricepercent:	The unit price percentile compared to the rest of the set.
+  -winpercent:	The overall win percentage according to 269,000 matchups.
+
+
+
+
+##upload Data
+```{r}
+url <- "https://raw.githubusercontent.com/fivethirtyeight/data/master/candy-power-ranking/candy-data.csv"
+
+# Read the CSV data into a data frame
+candy_raw <- read.csv(url)
+```
+
+# Descriptive Statistics
+
+
+
+#Show first 5 rows. 
+```{r}
+head(candy_raw)
+```
+
+#Show structure information about the dataframe. 
+```{r}
+str(candy_raw)
+```
+
+#Show summary statistics per column.
+```{r}
+summary(candy_raw)
+```
+
+
+# Cleaning and Preparing the Data
+
+Based on the results of the str(candy_raw) function above, several issues with how the read.csv function imported the data were identified that need to be cleaned up before going in-depth with the analysis:
+
+
+
+```{r}
+
+## competitorname column is useless for analysis 
+candy <- candy_raw[ , -1 ]
+
+## lets spell out the chocolate flag 
+candy$chocolate <- ifelse (candy$chocolate == 0, "no chocolate", "chocolate")
+
+
+## lets spell out the fruity flag 
+candy$fruity <- ifelse (candy$fruity == 0, "not fruity", "fruity")
+
+## lets spell out the caramel flag 
+candy$caramel <- ifelse (candy$caramel == 0, "no caramel", "caramel")
+
+##lets spell out peanutyalmondy
+candy$peanutyalmondy <- ifelse (candy$peanutyalmondy == 0, "not peanutyalmondy", "peanutyalmondy")
+
+
+##lets spell out the nougat flag 
+candy$nougat <- ifelse (candy$nougat == 0, "no nougat", "nougat")
+
+##lets spell out the crispedricewafer flag 
+candy$crispedricewafer <- ifelse (candy$crispedricewafer == 0, "no crispedricewafer", "crispedricewafer")
+
+##lets spell out the hard flag 
+candy$hard <- ifelse (candy$hard == 0, "not hard", "hard")
+
+##lets spell out the bar flag 
+candy$bar <- ifelse (candy$bar == 0, "not bar", "bar")
+
+##lets spell out the pluribus flag 
+candy$pluribus <- ifelse (candy$pluribus == 0, "no pluribus", "pluribus")
+
+
+## rename column gewinpercent
+#colnames(candy)[12] <- "target" 
+
+
+
+
+```
+
+
+# Univariate Plots
+In this section I will take a look at the distribution of values for each variable in the dataset by creating histograms using ggplot2's qplot function. We are trying to find out if there is more data to clean up, including outliers or extraneous values. This also might help me begin to identify any relationships between variables that are worth investigating further.
+
+
+
+##barchart for top ten 
+```{r}
+
+
+# Sort the candies' dataframe in descending order based on the 'Overall Score' column
+sorted_candies <- candy_raw[order(candy_raw$winpercent, decreasing = TRUE),]
+
+# Fetch the top 10 candies from the sorted dataframe
+top_10_candies <- head(sorted_candies, 10)
+
+# Print the top 10 candies
+print(top_10_candies)
+
+# Reorder levels in ascending order
+top_10_candies$competitorname <- factor(top_10_candies$competitorname, levels = unique(top_10_candies$competitorname))
+
+# Create a bar plot
+bar_plot <- ggplot(top_10_candies, aes(x = winpercent, y = reorder(competitorname, winpercent))) +
+  geom_bar(stat = "identity", color = "black",fill = "orange") +
+  labs(title = "Top 10 Competitors Based on Overall Win Percent",
+       x = "Win Percent", y = "Competitor Name") +
+  theme_minimal() +
+  theme(legend.position = "none")  # Remove legend for better appearance
+
+# Display the plot
+print(bar_plot)
+```
+
+
+
+
+## chococlate Distribution  
+
+```{r}
+
+chocolate_car <- candy %>%
+                  ggplot(aes(x = chocolate, fill = chocolate)) + 
+                    geom_histogram(stat="count") +
+                    theme(text = element_text(size = 16)) +
+                    labs(title = "Frequency Histogram: Presence of Chocolate in Candy",
+                         x = "Chocolate",
+                         y = "Count")
+ print(chocolate_car)
+
+# Berechnung der Pearson-Korrelation
+chocolate_corr <- cor(candy_raw$chocolate, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(chocolate_corr, 3), "\n")
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never had Chocolate
+
+##fruity Distribution
+
+```{r}
+
+fruity_car <- candy %>%
+                ggplot(aes(x = fruity, fill = fruity)) + 
+                  geom_histogram(stat="count") +
+                  theme(text = element_text(size = 16)) +
+                  labs(title = "Frequency Histogram: Where the Candys fruity?",
+                       x = "Fruity",
+                       y = "Count")
+
+print(fruity_car)
+
+
+# Berechnung der Pearson-Korrelation
+fruity_corr <- cor(candy_raw$fruity, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(fruity_corr, 3), "\n")
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never not Fruity
+
+
+
+##caramel Distribution
+
+```{r}
+
+caramel_car <- candy %>%
+                ggplot(aes(x = caramel, fill = caramel)) + 
+                  geom_histogram(stat="count") +
+                  theme(text = element_text(size = 16)) +
+                  labs(title = "Frequency Histogram: Caramel?",
+                       x = "Caramel",
+                       y = "Count")
+ print(caramel_car)
+
+# Berechnung der Pearson-Korrelation
+caramel_corr <- cor(candy_raw$caramel, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(caramel_corr, 3), "\n")
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never had no Caramel
+
+
+## Peanutyalmondy Distribution  
+
+```{r}
+
+Peanutyalmondy_car <- candy %>%
+                        ggplot(aes(x = peanutyalmondy, fill = peanutyalmondy)) + 
+                          geom_histogram(stat="count") +
+                          theme(text = element_text(size = 16)) +
+                          labs(title = "Frequency Histogram:Presence of Peanuts and Almonds",
+                               x = "Chocolate",
+                               y = "Count")
+
+print(Peanutyalmondy_car)
+
+
+# Berechnung der Pearson-Korrelation
+peanutyalmondy_corr <- cor(candy_raw$peanutyalmondy, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(peanutyalmondy_corr, 3), "\n")
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never had no Peanuts nor Nuts
+
+##nougat Distribution
+
+```{r}
+
+nougat_car <- candy %>%
+              ggplot(aes(x = nougat, fill = nougat)) + 
+                geom_histogram(stat="count") +
+                theme(text = element_text(size = 16)) +
+                labs(title = "Frequency Histogram: Nougat",
+                     x = "Nougat",
+                     y = "Count")
+
+print(nougat_car)
+
+
+# Count the number of candies with and without nougat
+nougat_counts <- table(candy$nougat)
+
+# Calculate the percentages
+percentage_with_nougat <- (nougat_counts["nougat"] / sum(nougat_counts)) * 100
+percentage_without_nougat <- (nougat_counts["no nougat"] / sum(nougat_counts)) * 100
+
+# Display the results
+cat("Percentage of candies with nougat: ", round(percentage_with_nougat, 2), "%\n")
+cat("Percentage of candies without nougat: ", round(percentage_without_nougat, 2), "%\n")
+
+
+# Berechnung der Pearson-Korrelation
+nougat_corr <- cor(candy_raw$nougat, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(nougat_corr, 3), "\n")
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never had no Nougats
+
+
+
+##Crispedricewafer Distribution
+
+```{r}
+
+Crispedricewafer_car <- candy %>%
+                        ggplot(aes(x = crispedricewafer, fill = crispedricewafer)) + 
+                          geom_histogram(stat="count") +
+                          theme(text = element_text(size = 16)) +
+                          labs(title = "Frequency Histogram: Crispedricewafer",
+                               x = "Crispedricewafer",
+                               y = "Count")
+
+print(Crispedricewafer_car)
+
+
+# Scatterplot erstellen
+scatter_plot <- ggplot(candy_raw, aes(x = crispedricewafer, y = winpercent, color = crispedricewafer)) +
+  geom_point() +  # Punktdiagramm erstellen
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + #Regressionline
+  scale_color_gradient(low = "blue", high = "red") +  # Farbskala festlegen
+  labs(title = "Scatterplot: Sugarpercent vs. Winpercent",
+       x = "Sugarpercent",
+       y = "Winpercent")
+
+# Plot anzeigen
+print(scatter_plot)
+
+
+
+# Zählen der Anzahl von Süßigkeiten mit und ohne crispedricewafer
+crispedricewafer_counts <- table(candy$crispedricewafer)
+
+# Berechnung der Prozentsätze
+prozentsatz_mit_crispedricewafer <- (crispedricewafer_counts["crispedricewafer"] / sum(crispedricewafer_counts)) * 100
+prozentsatz_ohne_crispedricewafer <- (crispedricewafer_counts["no crispedricewafer"] / sum(crispedricewafer_counts)) * 100
+
+# Anzeige der Ergebnisse
+cat("Prozentsatz der Süßigkeiten mit crispedricewafer: ", round(prozentsatz_mit_crispedricewafer, 2), "%\n")
+cat("Prozentsatz der Süßigkeiten ohne crispedricewafer: ", round(prozentsatz_ohne_crispedricewafer, 2), "%\n")
+
+
+# Berechnung der Pearson-Korrelation
+crispedricewafer_corr <- cor(candy_raw$crispedricewafer, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(crispedricewafer_corr, 3), "\n")
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never were not Crispy
+
+
+##hard Distribution
+
+```{r}
+
+hard_car <- candy %>%
+            ggplot(aes(x = hard, fill = hard)) + 
+              geom_histogram(stat="count") +
+              theme(text = element_text(size = 16)) +
+              labs(title = "Frequency Histogram: Hard",
+                   x = "Hard",
+                   y = "Count")
+
+print(hard_car)
+
+
+# Erstelle den Scatterplot
+ggplot(candy_raw, aes(x = hard, y = winpercent, colour = hard)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + #Regressionline
+  labs(title = "Scatter Plot of Hardness vs. Win Percentage",
+       x = "Hardness",
+       y = "Win Percentage")
+
+# Zählen der Anzahl von Süßigkeiten mit und ohne hard
+hard_counts <- table(candy$hard)
+
+# Berechnung der Prozentsätze
+prozentsatz_mit_hard <- (hard_counts["hard"] / sum(hard_counts)) * 100
+prozentsatz_ohne_hard <- (hard_counts["not hard"] / sum(hard_counts)) * 100
+
+# Anzeige der Ergebnisse
+cat("Prozentsatz der Süßigkeiten mit hard: ", round(prozentsatz_mit_hard, 2), "%\n")
+cat("Prozentsatz der Süßigkeiten ohne hard: ", round(prozentsatz_ohne_hard, 2), "%\n")
+
+
+# Berechnung der Pearson-Korrelation
+hard_corr <- cor(candy_raw$hard, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(hard_corr, 3), "\n")
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority were not hard
+
+
+##Bar Distribution
+
+```{r}
+
+bar_car <- candy %>%
+            ggplot(aes(x = bar, fill = bar)) + 
+              geom_histogram(stat="count") +
+              theme(text = element_text(size = 16)) +
+              labs(title = "Frequency Histogram: bar",
+                   x = "Bar",
+                   y = "Count")
+
+print(bar_car)
+
+
+# Erstelle den Scatterplot
+ggplot(candy_raw, aes(x = bar, y = winpercent, colour = bar)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + #Regressionline
+  labs(title = "Scatter Plot of Hardness vs. Win Percentage",
+       x = "Hardness",
+       y = "Win Percentage")
+
+
+# Berechnung der Pearson-Korrelation
+bar_corr <- cor(candy_raw$bar, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(bar_corr, 3), "\n")
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the majority never not Bar
+
+
+##Pluribus Distribution
+
+```{r}
+
+pluribus_car <- candy %>%
+                ggplot(aes(x = pluribus, fill = pluribus)) + 
+                  geom_histogram(stat="count") +
+                  theme(text = element_text(size = 16)) +
+                  labs(title = "Frequency Histogram: pluribus",
+                       x = "Pluribus",
+                       y = "Count")
+
+print(pluribus_car)
+
+
+# Scatterplot erstellen
+scatter_plot <- ggplot(candy_raw, aes(x = pluribus, y = winpercent, color = pluribus)) +
+  geom_point() +  # Punktdiagramm erstellen
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + #Regressionline
+  scale_color_gradient(low = "blue", high = "red") +  # Farbskala festlegen
+  labs(title = "Scatterplot: Sugarpercent vs. Winpercent",
+       x = "Sugarpercent",
+       y = "Winpercent")
+
+# Plot anzeigen
+print(scatter_plot)
+
+# Berechnung der Pearson-Korrelation
+pluribus_corr <- cor(candy_raw$pluribus, candy_raw$winpercent)
+cat("Pearson-Korrelation:", round(pluribus_corr, 3), "\n")
+
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, the ratio of Multi-pieces Candies to non-Multi-pieces Candies were almost the Same
+
+##sugarpercent Distribution
+
+```{r}
+sugar_car <- candy %>%
+            ggplot(aes(x = sugarpercent, fill = sugarpercent)) + 
+              geom_histogram(stat="count") +
+              theme(text = element_text(size = 16)) +
+              labs(title = "Frequency Histogram: Sugarpercent",
+                   x = "Sugarpercent in %",
+                   y = "Count")
+          
+
+print(sugar_car)
+
+
+# Scatterplot erstellen
+scatter_plot <- ggplot(candy, aes(x = sugarpercent, y = winpercent, color = sugarpercent)) +
+  geom_point() +  # Punktdiagramm erstellen
+  geom_smooth(method = "lm") + #Regressionline
+  scale_color_gradient(low = "blue", high = "red") +  # Farbskala festlegen
+  labs(title = "Scatterplot: Sugarpercent vs. Winpercent",
+       x = "Sugarpercent",
+       y = "Winpercent")
+
+# Plot anzeigen
+print(scatter_plot)
+
+
+# first we need to set up our plot
+ggplot(data = candy_raw, aes(x = sugarpercent, 
+                                 y = pricepercent, 
+                                 label = competitorname)) +
+    geom_point() + # then add a layer of points
+    geom_smooth(method = "lm") + # and then add a fitted line
+    geom_text(check_overlap = T,# automatically reduce overlap (deletes some labels)
+              vjust = "bottom", # adjust the vertical orientation
+              nudge_y = 0.01, # move the text up a bit so it doesn't touch the points
+              angle = 30, # tilt the text 30 degrees
+              size = 2 # make the text smaller (to reduce overlap more)
+             )
+
+
+
+# Berechnung der Pearson-Korrelation
+sugar_corr <- cor(candy$sugarpercent, candy$winpercent)
+cat("Pearson-Korrelation:", round(sugar_corr, 3), "\n")
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, was a positve Correlation between the Sugarpercent and Winpercent. That is an increase in the Sugar percentage in the Candies might likely lead to an increase in the Satisfaction of Customers.
+
+
+
+##Pricepercent
+```{r}
+
+price_car <- candy %>%
+              ggplot(aes(x = pricepercent, fill = pricepercent)) + 
+                geom_histogram(stat="count") +
+                theme(text = element_text(size = 16)) +
+                labs(title = "Frequency Histogram: Pricepercent",
+                     x = "Pricepercent in %",
+                     y = "Count")
+
+print(price_car)
+
+
+
+# Scatterplot erstellen
+scatter_plot <- ggplot(candy, aes(x = pricepercent, y = winpercent, color = pricepercent)) +
+  geom_point() +  # Punktdiagramm erstellen
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + #Regressionline
+  scale_color_gradient(low = "blue", high = "red") +  # Farbskala festlegen
+  labs(title = "Scatterplot: Pricepercent vs. Winpercent",
+       x = "Pricepercent",
+       y = "Winpercent")
+
+# Plot anzeigen
+print(scatter_plot)
+
+
+pric_corr <- cor(candy$pricepercent, candy$winpercent)
+cat("Korrelation zwischen Sugarpercent und Winpercent:",pric_corr, "\n")
+
+
+
+
+
+```
+**Interpretation** 
+The Graph Tell us that from the Candy sample, was a positve Correlation between the Pricepercent and Winpercent. That is an increase in the Price ratio in the Candies might likely lead to an increase in the Satisfaction of Customers.
+
+
+
+
+
+##Plotting the Correlation Heapmap
+
+```{r}
+
+
+
+# Calculate the correlation matrix for numeric columns
+correlation_matrix <- cor(candy_raw %>% select_if(is.numeric))
+
+# Create the correlation heatmap
+heatmap_plot <- ggplot(data = melt(correlation_matrix), aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  labs(title = "Correlation Heatmap")
+
+# Display the heatmap
+print(heatmap_plot)
+
+
+```
+
+
+
+
+```{r}
+# Group the dataset by competitorname and calculate the count
+count_data <- top_10_candies %>%
+  group_by(competitorname) %>%
+  summarise(count = n())
+
+# Sort the data by count in descending order
+count_data <- count_data[order(-count_data$count), ]
+
+# Plotting the pie chart
+pie(count_data$count, labels = count_data$competitorname, main = "Composition of Highest-Ranked Competitor Name")
+
+# Adding a legend
+legend("topright", legend = count_data$competitorname, cex = 0.8, fill = rainbow(length(count_data$competitorname)))
+
+# Adding a title
+title(main = "Composition of Highest-Ranked Competitor Name")
+
+# Adjusting the aspect ratio of the plot
+options(repr.plot.width = 8, repr.plot.height = 6)
+
+```
+
+
+##Ploting the Correlation Graph
+```{r}
+
+
+# Create a dataframe from the correlation matrix
+
+ x <- c(bar_corr, caramel_corr, chocolate_corr, crispedricewafer_corr, fruity_corr, hard_corr, nougat_corr, pluribus_corr, pric_corr, sugar_corr, peanutyalmondy_corr)
+ 
+ variables <- c("bar", "caramel", "chocolate", "crispedricewafer", "fruity", "hard", "nougat", "pluribus", "price", "sugar", "peanutyalmondy")
+ 
+ 
+# Create a tibble
+correlation_tibble <- tibble(Variable = variables, Correlation = x)
+
+
+# Create a colorful bar chart
+bar_chart <- ggplot(correlation_tibble, aes(x = reorder(Variable, Correlation), y = Correlation, fill = Variable)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Correlation between other Variables and the Winpercent",
+       x = "Variable", y = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  scale_fill_brewer(palette = "Set3")  # You can choose a different palette
+
+# Display the chart
+print(bar_chart)
+
+```
+
+```{r}
+# Fit a linear regression model
+regression_model <- lm(winpercent ~ sugarpercent + chocolate, data = candy_raw)
+
+# Print the summary of the regression model
+summary(regression_model)
+
+```
+**interpretation**
+This is the output of a linear regression model:
+
+# Residuals:
+- The residuals (differences between the observed and predicted values) have a minimum of -23.6981, a maximum of 27.4820, and are centered around 0.
+
+# Coefficients:
+- **Intercept (38.262):** The estimated average `winpercent` when `sugarpercent` and `chocolate` are zero.
+- **sugarpercent (8.567):** For each unit increase in `sugarpercent`, the `winpercent` is estimated to increase by 8.567 (not statistically significant at conventional levels, p-value = 0.0525).
+- **chocolate (18.273):** For each unit increase in `chocolate` (assuming it's a binary variable), the `winpercent` is estimated to increase by 18.273.
+
+# Significance:
+- The intercept is highly significant (p-value < 2e-16), indicating that the model is significantly different from a model with no predictors.
+- `chocolate` is highly significant (p-value = 1.06e-10), suggesting that it contributes significantly to predicting `winpercent`.
+
+# Goodness-of-Fit:
+- **Residual Standard Error (11.22):** The standard deviation of the residuals.
+- **Multiple R-squared (0.432):** The proportion of the variance in `winpercent` explained by the model.
+- **Adjusted R-squared (0.4181):** The R-squared adjusted for the number of predictors.
+
+# F-statistic:
+- **F-statistic (31.18):** A test of the overall significance of the model.
+- **p-value (< 2.2e-16):** The model is statistically significant, suggesting that at least one of the predictors is related to `winpercent`.
+
+Overall, the model suggests that both `sugarpercent` and `chocolate` are associated with `winpercent`, and the model provides a good fit to the data.
+
+##Creating a linear regression using Sugarpercent and Fruity to predict winpercent
+```{r}
+# Create a linear regression model
+model <- lm(winpercent ~ sugarpercent + fruity, data = candy_raw)
+
+# Display the summary of the regression model
+summary(model)
+
+```
+**interpretation**
+
+The output you provided is the summary of a linear regression model. Here's how you can interpret each part:
+
+1. **Call:**
+   - It shows the formula used to fit the model. In this case, the model is `winpercent ~ sugarpercent + fruity`, indicating that you're predicting `winpercent` based on `sugarpercent` and `fruity`.
+
+2. **Residuals:**
+   - These are the differences between the observed and predicted values. They give you an idea of how well the model fits the data. The values range from -29.947 to 31.642.
+
+3. **Coefficients:**
+   - **Intercept (49.842):** This is the predicted value of `winpercent` when both `sugarpercent` and `fruity` are zero.
+   - **sugarpercent (11.255):** For each one-unit increase in `sugarpercent`, the predicted `winpercent` increases by 11.255, assuming `fruity` is constant.
+   - **fruity (-10.989):** If `fruity` is 1 (true), the predicted `winpercent` decreases by 10.989, assuming `sugarpercent` is constant.
+
+4. **Significance Codes:**
+   - '***', '**', '*': Indicate the level of significance. In this case, all coefficients are significant (very low p-values).
+
+5. **Residual Standard Error:**
+   - It's an estimate of the standard deviation of the residuals. In this case, it's 13.39.
+
+6. **Multiple R-squared (0.1918):**
+   - It represents the proportion of the variance in the dependent variable (`winpercent`) that is explained by the independent variables (`sugarpercent` and `fruity`). In this case, it's 19.18%.
+
+7. **Adjusted R-squared (0.1721):**
+   - Similar to R-squared but adjusted for the number of predictors. It penalizes the inclusion of unnecessary variables. Here, it's 17.21%.
+
+8. **F-statistic (9.733):**
+   - It tests the overall significance of the model. A higher F-statistic indicates a more significant model.
+
+9. **p-value (0.0001612):**
+   - It indicates whether the overall model is significant. In this case, the p-value is very low, suggesting that at least one predictor variable is useful in predicting `winpercent`.
+
+Overall, the model suggests that both `sugarpercent` and `fruity` are significant predictors of `winpercent`, and the model as a whole is statistically significant. However, the R-squared values indicate that the model explains only a moderate proportion of the variability in `winpercent`.
+
+
+```{r}
+
+
+# Assuming 'data' is your dataframe
+model <- lm(winpercent ~ bar + caramel + chocolate + crispedricewafer + fruity + hard + nougat + pluribus + peanutyalmondy + pricepercent + sugarpercent, data = candy_raw)
+
+# Print the summary of the regression model
+summary(model)
+
+var <- c("intercept", "bar", "caramel", "chocolate", "crispedricewafer", "fruity", "hard", "nougat", "pluribus", "peanutyalmondy", "pricepercent", "sugarpercent")
+
+
+
+```
+
