@@ -14,3 +14,17 @@ Header	Description
   -sugarpercent:	The percentile of sugar it falls under within the data set.
   -pricepercent:	The unit price percentile compared to the rest of the set.
   -winpercent:	The overall win percentage according to 269,000 matchups.
+
+
+
+
+
+
+| gameState | Value |    | setPlay            | Value |
+|-----------|-------|----|--------------------|-------|
+| initial   | 0     |    | None               | 0     |
+| ready     | 1     |    | Goal_kick          | 1     |
+| set       | 2     |    | pushing_free_kick  | 2     |
+| playing   | 3     |    | corner_kick        | 3     |
+| finished  | 4     |    | kick_in            | 4     |
+|           |       |    | Penalty_kick       | 5     |
